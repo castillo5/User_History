@@ -1,13 +1,15 @@
-import express from 'express';
+import app from './server';
+import sequelize from './config/database';
 
-const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-app.get('/', (req, res) => {
-  res.send('Servidor funcionando. Milagro.');
-});
-
-app.listen(PORT, () => {
-  console.log(`Servidor corriendo en http://localhost:${PORT}`);
-});
-
+sequelize.authenticate()
+  .then(() => {
+    console.log('✅ Conexión a la base de datos establecida con éxito.');
+    app.listen(PORT, () => {
+      console.log(`🚀 Servidor corriendo en http://localhost:${PORT}`);
+    });
+  })
+  .catch((error) => {
+    console.error('❌ Error al conectar con la base de datos:', error);
+  });
