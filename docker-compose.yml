@@ -7,32 +7,6 @@ services:
       target: runner
     env_file:
       - .env
-    environment:
-      DB_HOST: db
-      DB_PORT: 5432
-    depends_on:
-      db:
-        condition: service_healthy
     ports:
       - '${PORT:-3000}:3000'
     restart: unless-stopped
-
-  db:
-    image: postgres:16-alpine
-    environment:
-      POSTGRES_DB: ${DB_NAME:-user_history}
-      POSTGRES_USER: ${DB_USER:-postgres}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
-    ports:
-      - '${DB_PORT:-5432}:5432'
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-postgres}']
-      interval: 5s
-      timeout: 5s
-      retries: 10
-    volumes:
-      - db_data:/var/lib/postgresql/data
-    restart: unless-stopped
-
-volumes:
-  db_data:
