@@ -1,16 +1,42 @@
-import { DataTypes, Model, Sequelize } from 'sequelize';
+import { DataTypes, Model, Optional, Sequelize } from 'sequelize';
 
 export interface ClienteAttributes {
-  // TODO: Definir la estructura final del cliente (ej. nombre, email, etc.).
+  id: number;
+  name: string;
+  phone: string;
+  address: string;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
-export class Cliente extends Model<ClienteAttributes> {}
+export type ClienteCreationAttributes = Optional<ClienteAttributes, 'id'>;
+
+export class Cliente extends Model<ClienteAttributes, ClienteCreationAttributes> {}
 
 export const initClienteModel = (sequelize: Sequelize) => {
+  if (sequelize.models.Cliente) {
+    return sequelize.models.Cliente as typeof Cliente;
+  }
+
   Cliente.init(
     {
-      // Ejemplo de columna a completar más adelante:
-      // nombre: { type: DataTypes.STRING, allowNull: false },
+      id: {
+        type: DataTypes.INTEGER,
+        autoIncrement: true,
+        primaryKey: true,
+      },
+      name: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      phone: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+      address: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
     },
     {
       sequelize,
