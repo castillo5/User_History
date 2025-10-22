@@ -1,35 +1,30 @@
 import { Sequelize } from 'sequelize';
-import 'dotenv/config';
+import { env, isTest } from './env';
 
-const {
-  DB_NAME,
-  DB_USER,
-  DB_PASSWORD,
-  DB_HOST = 'localhost',
-  DB_PORT = '5432',
-  DB_SSL,
-} = process.env;
+const logging = env.NODE_ENV === 'development' ? console.log : false;
 
-const missing = ['DB_NAME', 'DB_USER', 'DB_PASSWORD'].filter((key) => !(process.env[key] && process.env[key]?.length));
-if (missing.length) {
-  throw new Error(`Variables de entorno faltantes para la base de datos: ${missing.join(', ')}`);
-}
-
-const useSSL = DB_SSL === 'true' || DB_SSL === '1';
-
-const sequelize = new Sequelize(DB_NAME as string, DB_USER as string, DB_PASSWORD as string, {
-  host: DB_HOST,
-  port: Number(DB_PORT),
+export const sequelize = new Sequelize(env.DB_NAME, env.DB_USER, env.DB_PASSWORD, {
+  host: env.DB_HOST,
+  port: env.DB_PORT,
   dialect: 'postgres',
-  logging: false,
-  dialectOptions: useSSL
-    ? {
-        ssl: {
-          require: true,
-          rejectUnauthorized: false,
-        },
-      }
-    : undefined,
+  logging,
+  pool: {
+    max: isTest ? 1 : 10,
+    min: 0,
+    acquire: 30000,
+    idle: 10000
+  }
 });
 
-export default sequelize;
+export const connectDatabase = async (): Promise<void> => {
+  try {
+    await sequelize.authenticate();
+    if (env.NODE_ENV !== 'production') {
+      await sequelize.sync({ alter: env.NODE_ENV === 'development' });
+    }
+    console.log('Database connection established');
+  } catch (error) {
+    console.error('Unable to connect to the database:', error);
+    throw error;
+  }
+};

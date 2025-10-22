@@ -1,18 +1,18 @@
-import express from 'express';
-import cors from 'cors';
-import routes from './routes';
+import { connectDatabase } from '@config/database';
+import { env } from '@config/env';
+import { setupModelAssociations } from '@modules/setupModels';
+import { app } from './app';
 
-const app = express();
+const bootstrap = async (): Promise<void> => {
+  setupModelAssociations();
+  await connectDatabase();
 
-// Middlewares globales
-app.use(cors());
-app.use(express.json());
+  app.listen(env.PORT, () => {
+    console.log(`SportsLine API running on port ${env.PORT}`);
+  });
+};
 
-// Rutas base
-app.use('/', routes);
-
-app.get('/', (_req, res) => {
-  res.send('Servidor User_History en ejecución.');
+bootstrap().catch((error) => {
+  console.error('Failed to bootstrap application', error);
+  process.exit(1);
 });
-
-export default app;
