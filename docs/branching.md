@@ -20,3 +20,18 @@ We use a simplified Git Flow to keep `main` stable and production-ready.
 
 - Protect `main` and `develop` on GitHub: require PR reviews, status checks, forbid force-pushes.
 - Delete feature branches on merge to keep the repo tidy.
+
+## GitHub Configuration Checklist
+
+1. Crea las ramas `main` y `develop` en GitHub y verifica que `develop` sea la predeterminada para trabajo diario.
+2. En **Settings ▸ Branches**, agrega reglas de protección para `main` y `develop` (prohibir force push, requerir PR aprobado y passing checks).
+3. Habilita la opción "Automatically delete head branches" para limpiar ramas feature al hacer merge.
+4. Vincula issues o user stories a los PR utilizando el formato `feature/<hu>-<task>` para facilitar el seguimiento.
+5. Configura acciones (si aplica) para ejecutar pruebas y linters en cada PR hacia `develop` o `main`.
+
+## Branch Naming Guidelines
+
+- `feature/<hu>-<task>` para trabajo funcional (ej. `feature/setup-task2`).
+- `bugfix/<id>` para correcciones menores detectadas en QA.
+- `release/<version>` para preparar entregas empaquetadas.
+- `hotfix/<issue>` para parches urgentes que deben llegar a producción.
