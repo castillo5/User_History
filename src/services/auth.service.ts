@@ -1,7 +1,8 @@
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import jwt, { Secret, SignOptions } from 'jsonwebtoken';
-import type { StringValue } from 'ms';
 import { Usuario, UsuarioAttributes } from '../models/usuarios/usuarios.model';
+import { RefreshToken } from '../models/tokens/refresh-token.model';
 
 export interface RegisterDto {
   name: string;
@@ -17,7 +18,8 @@ export interface LoginDto {
 
 export interface AuthResult {
   user: Omit<UsuarioAttributes, 'password'>;
-  token: string;
+  accessToken: string;
+  refreshToken: string;
 }
 
 export class AuthError extends Error {
@@ -62,11 +64,14 @@ export class AuthService {
       role: role === 'admin' ? 'admin' : 'user',
     });
 
-    const token = this.generateToken(user);
+    await this.revokeUserTokens(user.id);
+
+    const { accessToken, refreshToken } = await this.issueTokens(user);
 
     return {
       user: sanitizeUser(user),
-      token,
+      accessToken,
+      refreshToken,
     };
   }
 
@@ -85,17 +90,28 @@ export class AuthService {
       throw new AuthError('Credenciales inválidas.', 401);
     }
 
-    const token = this.generateToken(user);
+    await this.revokeUserTokens(user.id);
+
+    const { accessToken, refreshToken } = await this.issueTokens(user);
 
     return {
       user: sanitizeUser(user),
-      token,
+      accessToken,
+      refreshToken,
     };
   }
 
-  private generateToken(user: Usuario) {
+  private async issueTokens(user: Usuario) {
+    const accessToken = this.generateAccessToken(user);
+    const refreshToken = await this.generateRefreshToken(user);
+
+    return { accessToken, refreshToken };
+  }
+
+  private generateAccessToken(user: Usuario) {
     const secret = getJwtSecret();
     const expiresInConfig = process.env.JWT_EXPIRES_IN ?? '1h';
+    const expiresInSeconds = parseDurationToSeconds(expiresInConfig);
 
     const payload = {
       sub: user.id,
@@ -103,16 +119,84 @@ export class AuthService {
       role: user.role,
     };
 
-    const options: SignOptions = {};
-
-    if (expiresInConfig) {
-      options.expiresIn = /^\d+$/.test(expiresInConfig)
-        ? Number(expiresInConfig)
-        : (expiresInConfig as StringValue);
-    }
+    const options: SignOptions = {
+      expiresIn: expiresInSeconds,
+    };
 
     return jwt.sign(payload, secret, options);
+  }
+
+  private async generateRefreshToken(user: Usuario) {
+    const rawToken = crypto.randomBytes(64).toString('hex');
+    const hashedToken = hashToken(rawToken);
+    const ttlInput = process.env.REFRESH_TOKEN_TTL ?? '7d';
+    const ttlMs = parseDurationToSeconds(ttlInput) * 1000;
+
+    if (!ttlMs || Number.isNaN(ttlMs)) {
+      throw new AuthError('Valor inválido para REFRESH_TOKEN_TTL.', 500);
+    }
+
+    const expiresAt = new Date(Date.now() + ttlMs);
+
+    await RefreshToken.create({
+      token: hashedToken,
+      userId: user.id,
+      expiresAt,
+    });
+
+    return rawToken;
+  }
+
+  private async revokeUserTokens(userId: number) {
+    await RefreshToken.update(
+      { revokedAt: new Date() },
+      {
+        where: {
+          userId,
+          revokedAt: null,
+        },
+      }
+    );
   }
 }
 
 export const hashPassword = (plainPassword: string) => bcrypt.hash(plainPassword, SALT_ROUNDS);
+
+const hashToken = (token: string) => crypto.createHash('sha256').update(token).digest('hex');
+
+const DURATION_REGEX = /^\s*(\d+)\s*(s|m|h|d|w)\s*$/i;
+const UNIT_TO_SECONDS: Record<string, number> = {
+  s: 1,
+  m: 60,
+  h: 60 * 60,
+  d: 60 * 60 * 24,
+  w: 60 * 60 * 24 * 7,
+};
+
+const parseDurationToSeconds = (value: string): number => {
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    throw new AuthError('La duración configurada no puede ser vacía.', 500);
+  }
+
+  if (/^\d+$/.test(trimmed)) {
+    return Number(trimmed);
+  }
+
+  const match = trimmed.match(DURATION_REGEX);
+
+  if (!match) {
+    throw new AuthError('Formato de duración inválido. Usa valores como 3600, 15m, 1h o 7d.', 500);
+  }
+
+  const amount = Number(match[1]);
+  const unitKey = match[2].toLowerCase();
+  const multiplier = UNIT_TO_SECONDS[unitKey];
+
+  if (!multiplier) {
+    throw new AuthError('Unidad de tiempo no soportada en la duración configurada.', 500);
+  }
+
+  return amount * multiplier;
+};

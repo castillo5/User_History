@@ -10,6 +10,7 @@ Variables relevantes:
 - `JWT_SECRET`: Clave usada para firmar los tokens.
 - `JWT_EXPIRES_IN`: Tiempo de expiración (ej. `1h`, `3600`).
 - `BCRYPT_SALT_ROUNDS`: Rondas de hash para contraseñas (por defecto 10).
+- `REFRESH_TOKEN_TTL`: Vigencia del refresh token (ej. `7d`, `12h`).
 
 ## Endpoints de autenticación
 
