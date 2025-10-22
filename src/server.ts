@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import routes from './routes';
 
 const app = express();
 
@@ -7,9 +8,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Rutas de ejemplo
-app.get('/', (req, res) => {
-  res.send('Servidor levantado, milagrosamente.');
+// Rutas base
+app.use('/', routes);
+
+app.get('/', (_req, res) => {
+  res.send('Servidor User_History en ejecución.');
 });
 
 export default app;
