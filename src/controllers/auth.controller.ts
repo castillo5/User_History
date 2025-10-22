@@ -22,6 +22,16 @@ export class AuthController {
     }
   };
 
+  refresh = async (req: Request, res: Response) => {
+    try {
+      const { refreshToken } = req.body;
+      const result = await this.authService.refresh(refreshToken);
+      res.status(200).json(result);
+    } catch (error) {
+      this.handleError(error, res);
+    }
+  };
+
   private handleError(error: unknown, res: Response) {
     if (error instanceof AuthError) {
       res.status(error.statusCode).json({ message: error.message });

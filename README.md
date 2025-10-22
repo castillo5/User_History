@@ -16,3 +16,4 @@ Variables relevantes:
 
 - `POST /auth/register`: Crea un usuario (`name`, `email`, `password`, `role?`).
 - `POST /auth/login`: Devuelve token JWT y datos del usuario (`email`, `password`).
+- `POST /auth/refresh`: Genera nuevos tokens a partir de `refreshToken`.

@@ -101,6 +101,42 @@ export class AuthService {
     };
   }
 
+  async refresh(refreshToken: string): Promise<AuthResult> {
+    if (!refreshToken) {
+      throw new AuthError('Refresh token requerido.', 400);
+    }
+
+    const hashed = hashToken(refreshToken);
+    const tokenRecord = await RefreshToken.findOne({ where: { token: hashed } });
+
+    if (!tokenRecord) {
+      throw new AuthError('Refresh token inválido.', 401);
+    }
+
+    if (tokenRecord.revokedAt) {
+      throw new AuthError('Refresh token revocado.', 401);
+    }
+
+    if (tokenRecord.expiresAt.getTime() <= Date.now()) {
+      throw new AuthError('Refresh token expirado.', 401);
+    }
+
+    const user = await Usuario.findByPk(tokenRecord.userId);
+    if (!user) {
+      throw new AuthError('Usuario no encontrado para refresh token.', 404);
+    }
+
+    await tokenRecord.update({ revokedAt: new Date() });
+
+    const { accessToken, refreshToken: newRefreshToken } = await this.issueTokens(user);
+
+    return {
+      user: sanitizeUser(user),
+      accessToken,
+      refreshToken: newRefreshToken,
+    };
+  }
+
   private async issueTokens(user: Usuario) {
     const accessToken = this.generateAccessToken(user);
     const refreshToken = await this.generateRefreshToken(user);
