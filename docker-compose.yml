@@ -1,0 +1,60 @@
+version: '3.9'
+
+services:
+  api:
+    build:
+      context: .
+      target: runner
+    container_name: user_history_api
+    env_file:
+      - .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 5432
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${PORT:-3000}:3000"
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    mem_limit: 512m
+    cpus: 0.5
+
+  db:
+    image: postgres:16-alpine
+    container_name: user_history_db
+    environment:
+      POSTGRES_DB: ${DB_NAME:-user_history}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-postgres}
+    ports:
+      - "${DB_PORT:-5432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - db_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 512M
+    mem_limit: 512m
+    cpus: 0.5
+
+networks:
+  app-network:
+
+volumes:
+  db_data:
